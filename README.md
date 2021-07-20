@@ -1,7 +1,5 @@
 # 200-SMA-Blog
 
-# May Effect Blog 
-
 All of our analysis and results can be found in the blog on our [website](https://extremistanresearch.com). In this README, we will broadly explain our code, as   well as our thought process in our methodology. 
   
 We used 1 python program titles 200_sma_blog.py to gather the data for this blog. This program has been fully commented and uploaded to the repository.
@@ -42,48 +40,35 @@ Then we checked to see if the Close price was above the current value of the SMA
             # Add to the length of time it has spent above the sma
             above_len += 1
 ```
-Following this, we checked to see if the date 
+Following this, we checked to see if the Close had dipped below the SMA when the above_len still had a value. This indiciated that the price had gone from above to below in the most recent loop. If this occurred, we calculated the percent change during the time period that the Close was above the SMA. Note, the date in the else if statement is there to make sure that the program detects our current period of being above the SMA, as it has not yet dipped back below. 
 ```
-# For each row in the data sheet, get the necessary data and calculate the percent change
-for i in range(len(data["Unnamed: 0"])):
-    if str(data["Unnamed: 0"][i])[1].isnumeric():
+# If it dips below the sma and it was just above
+        elif (data["Close"][i] < sma and above_len > 0) or str(data.index[i]) == "2021-07-15 00:00:00":
+            # Calculate the % change
+            pct_change = ((data["Close"][i] - start_price) / start_price) * 100
+            # If this is the first time this duration has occurred
+```
+After finding the percent change, we needed to add our values to the dataframe. We checked to see if the duration had occurred before. If it hadn't we added it to the dataframe as a new row. If it had, we found the index where it occurred before, then added 1 to the occurrences tab, recalculated the average, and added another date to our date column.
+```
+if above_len not in df["Duration"]:
+                # Add all attributes to the dataframe
+                df = df.append({"Duration" : above_len, "% Change" : pct_change, "Occurrences" : 1, "Date Range": (start_date + " to " +                 str(data.index[i].date()))}, ignore_index = True)
 
-        # Note, the years in the line below will be changed for each run through to keep the proper time frame
-        if float(str(data["Unnamed: 0"][i])) > 2009 and float(str(data["Unnamed: 0"][i])) < 2022:
-
-            # Store the current date
-            if len(str(data["Unnamed: 0"][i])) == 7 and str(data["Unnamed: 0"][i])[1].isnumeric():
-                cur_date = str(data["Unnamed: 0"][i])[5] + str(data["Unnamed: 0"][i])[6]
-
-            # The number 10 was corrupted on the date sheet, so here is our accounting for that
-            elif len(str(data["Unnamed: 0"][i])) == 6 and str(data["Unnamed: 0"][i])[1].isnumeric():
-                cur_date = "10"
+            # If it has occurred before
             else:
-                cur_date = 0
-
-            # Start on the first May of the data sheet so we have all complete time periods
-            if cur_date == "05" and begin == False:
-                begin = True
-
-            # If it is May, begin time period
-            if cur_date == "05" and data["Unnamed: 1"][1] is not None:
-                start_price = data["Unnamed: 1"][i]
-
-            # If it is October, finish time period at the end of the month
-            if cur_date == "10" and data["Unnamed: 1"][1] is not None:
-                may_october.append(((float(data["Unnamed: 1"][i]) - float(start_price)) / float(start_price)) * 100)
-
-            # If it is the start of November, start next period
-            if cur_date == "11" and data["Unnamed: 1"][1] is not None:
-                start_price = data["Unnamed: 1"][i]
-
-            # If it is the end of April, finish the time period
-            if cur_date == "04" and data["Unnamed: 1"][1] is not None and begin == True:
-                november_april.append(((float(data["Unnamed: 1"][i]) - float(start_price)) / float(start_price)) * 100)
+                # Find the index value of the duration
+                index = df.index[df["Duration"] == above_len]
+                # Find the total percent change so that we can add the new value to it
+                cur_pct_change = df["% Change"][index]
+                total_change = df["% Change"][index] * df["Occurrences"][index]
+                # Update the number of occurrences
+                df["Occurrences"][index] = df["Occurrences"][index] + 1
+                # Update the % change
+                df["% Change"][index] = (total_change + pct_change) / df["Occurrences"][index]
+                # Add our date range(s)
+                df["Date Range"][index] = df["Date Range"][index] + ", " + start_date + " to " + str(data.index[i].date())
 ```
-
-After gathering all the percent changes for each period, the rest of the program is the same as the previous one. We removed any incomplete data, averaged the whole data set, and plotted it.
-
+Finally, we saved the dataframe to an excel file so we could export it.
   
 
 
